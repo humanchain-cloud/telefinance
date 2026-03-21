@@ -1,0 +1,220 @@
+/* assets/report.css
+   ------------------------------------------------------------
+   Telefinance - Corporate Report Style (WeasyPrint)
+   ------------------------------------------------------------
+   Objetivo:
+   - Apariencia ejecutiva para reportes PDF (Opciones 4 y 5)
+   - Diseñado para A4
+   - Legibilidad alta
+   - KPIs operativos + KPIs financieros
+   - Cards + tablas limpias
+   - Compatible con WeasyPrint (evita CSS exótico)
+*/
+
+/* ------------------------------------------------------------
+   Page setup (WeasyPrint)
+------------------------------------------------------------ */
+@page {
+  size: A4;
+  margin: 16mm 14mm 14mm 14mm;
+}
+
+/* ------------------------------------------------------------
+   Base
+------------------------------------------------------------ */
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #111;
+  background: #fff;
+}
+
+.report {
+  width: 100%;
+}
+
+/* ------------------------------------------------------------
+   Header
+------------------------------------------------------------ */
+.header {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 10px;
+  align-items: center;
+  border-bottom: 2px solid #111;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-right {
+  display: block;
+}
+
+.logo {
+  width: 70px;
+  height: auto;
+}
+
+.header-title {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  margin: 0;
+}
+
+.header-sub {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #444;
+}
+
+/* ------------------------------------------------------------
+   Utilities
+------------------------------------------------------------ */
+.mt {
+  margin-top: 12px;
+}
+
+.muted {
+  color: #666;
+}
+
+.td-right {
+  text-align: right;
+}
+
+/* ------------------------------------------------------------
+   Section labels
+------------------------------------------------------------ */
+.section-label {
+  margin-top: 8px;
+  margin-bottom: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #444;
+}
+
+/* ------------------------------------------------------------
+   Grids
+------------------------------------------------------------ */
+.grid {
+  display: grid;
+  gap: 10px;
+}
+
+.grid-2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* ------------------------------------------------------------
+   KPI cards
+------------------------------------------------------------ */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.kpi {
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 10px;
+  background: #fff;
+}
+
+.kpi-k {
+  font-size: 10px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.kpi-v {
+  margin-top: 6px;
+  font-size: 16px;
+  font-weight: 800;
+  color: #111;
+}
+
+/* Variante visual para KPIs financieros */
+.kpi-fin {
+  border-color: #cfcfcf;
+  background: #fafafa;
+}
+
+/* ------------------------------------------------------------
+   Cards
+------------------------------------------------------------ */
+.card {
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 10px;
+  background: #fff;
+}
+
+.card-title {
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* ------------------------------------------------------------
+   Charts
+------------------------------------------------------------ */
+.chart {
+  width: 100%;
+  height: auto;
+  border: 1px solid #eee;
+  border-radius: 8px;
+}
+
+/* ------------------------------------------------------------
+   Tables
+------------------------------------------------------------ */
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.tbl th,
+.tbl td {
+  border: 1px solid #ddd;
+  padding: 6px 7px;
+}
+
+.tbl th {
+  background: #f4f4f4;
+  font-weight: 800;
+}
+
+.tbl tr:nth-child(even) td {
+  background: #fcfcfc;
+}
+
+/* ------------------------------------------------------------
+   Footer
+------------------------------------------------------------ */
+.footer {
+  margin-top: 14px;
+  padding-top: 8px;
+  border-top: 1px solid #ddd;
+  font-size: 10px;
+  color: #666;
+}

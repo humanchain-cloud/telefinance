@@ -1,0 +1,123 @@
+/* factura.css - estilo “Recibo” (como tu screenshot) */
+
+:root{
+  --primary:#0b63f6;      /* azul barra/header */
+  --light:#f2f2f2;        /* cajas grises */
+  --row:#f3f3f8;          /* zebra */
+  --text:#111827;
+  --muted:#6b7280;
+}
+
+*{ box-sizing:border-box; }
+html,body{ margin:0; padding:0; color:var(--text); font-family: Arial, Helvetica, sans-serif; }
+
+.page{
+  padding: 22px 18px;
+}
+
+/* Tarjeta principal */
+.receipt{
+  width: 100%;
+  background:#fff;
+  border-radius: 14px;
+  padding: 18px 18px 16px;
+}
+
+/* Header: logo izq + titulo der */
+.header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+
+.logo{
+  width:56px;
+  height:56px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.title{
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.hr{
+  height:3px;
+  background: var(--primary);
+  border-radius: 99px;
+  margin: 12px 0 14px;
+}
+
+/* Cajas vendedor/cliente */
+.info-row{
+  display:flex;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.info-box{
+  flex:1;
+  background: var(--light);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.info-box b{
+  font-weight: 800;
+}
+
+.info-line{
+  line-height: 1.15;
+}
+
+/* Tabla */
+.table{
+  width:100%;
+  border-collapse: collapse;
+  overflow:hidden;
+  border-radius: 10px;
+}
+
+.table thead th{
+  background: var(--primary);
+  color:#fff;
+  text-align:center;
+  padding: 10px 8px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.table tbody td{
+  padding: 10px 10px;
+  font-size: 13px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.table tbody tr:nth-child(even){
+  background: var(--row);
+}
+
+/* Alineaciones */
+.t-desc{ width:46%; }
+.t-center{ text-align:center; width:14%; }
+.t-right{ text-align:right; width:13%; }
+
+/* Barra total */
+.total-bar{
+  margin-top: 10px;
+  background: var(--primary);
+  color:#fff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  font-weight: 900;
+}
+
+.total-label{ padding-left: 4px; }
+.total-value{ padding-right: 4px; }

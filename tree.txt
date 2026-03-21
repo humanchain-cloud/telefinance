@@ -1,0 +1,96 @@
+telefinance/
+├── README.md
+├── requirements.txt
+├── .env.example
+├── .gitignore
+├── Makefile
+│
+├── data/
+│   ├── telefinance.db
+│   ├── samples/
+│   │   └── README.md
+│   └── exports/
+│       └── README.md
+│
+├── logs/
+│   └── .gitkeep
+│
+├── output/
+│   ├── invoices/
+│   │   └── .gitkeep
+│   └── reports/
+│       └── .gitkeep
+│
+├── assets/
+│   ├── factura.css
+│   ├── logo_factura.png
+│   └── README.md
+│
+├── streamlit_app/
+│   └── app.py
+│
+├── src/
+│   ├── __init__.py
+│   ├── main.py
+│   │
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── config.py
+│   │   ├── logger.py
+│   │   ├── errors.py
+│   │   ├── utils_time.py
+│   │   └── paths.py
+│   │
+│   ├── db/
+│   │   ├── __init__.py
+│   │   ├── connection.py
+│   │   ├── schema.py
+│   │   ├── migrations.py
+│   │   └── repositories/
+│   │       ├── __init__.py
+│   │       ├── drafts_repo.py
+│   │       ├── vendor_invoices_repo.py
+│   │       ├── service_invoices_repo.py
+│   │       └── analytics_repo.py
+│   │
+│   ├── domain/
+│   │   ├── __init__.py
+│   │   ├── models.py
+│   │   └── enums.py
+│   │
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── ocr_openai.py
+│   │   ├── invoice_parser.py
+│   │   ├── invoice_builder.py
+│   │   ├── pdf_renderer.py
+│   │   ├── consecutivo.py
+│   │   └── analytics.py
+│   │
+│   ├── telegram_bot/
+│   │   ├── __init__.py
+│   │   ├── bot.py
+│   │   ├── handlers/
+│   │   │   ├── __init__.py
+│   │   │   ├── start.py
+│   │   │   ├── vendor_photo.py
+│   │   │   ├── service_wizard.py
+│   │   │   └── admin.py
+│   │   ├── keyboards/
+│   │   │   ├── __init__.py
+│   │   │   └── menus.py
+│   │   └── state/
+│   │       ├── __init__.py
+│   │       └── wizard_state.py
+│   │
+│   └── cli/
+│       ├── __init__.py
+│       ├── init_db.py
+│       ├── run_bot.py
+│       └── run_streamlit.py
+│
+└── tests/
+    ├── __init__.py
+    ├── test_db_schema.py
+    ├── test_parser.py
+    └── test_analytics.py
