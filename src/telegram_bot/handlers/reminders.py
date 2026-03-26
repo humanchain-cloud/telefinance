@@ -31,11 +31,20 @@ Regla anti-lock
 - Lectura rápida primero
 - Envío Telegram después
 - Escritura bajo single-writer lock
+
+Fix aplicado
+------------
+- Se corrigieron los SELECT que usaban COALESCE(...) sin alias.
+  Eso era la causa del error:
+      "No item with that key"
+  al intentar acceder a sqlite3.Row con claves como:
+      r["place_name"], r["ph_type"], etc.
 """
 
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
@@ -52,6 +61,9 @@ from src.db.repositories.ordered_parts_repo import (
     postpone_next_reminder,
 )
 from src.db.repositories.work_jobs_repo import mark_work_job_reminded
+
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------
@@ -168,6 +180,9 @@ def _format_appliances(appliances: List[Dict[str, Any]]) -> str:
 
 
 def _format_place(ph_type: str, ph_name: Optional[str]) -> str:
+    """
+    Formatea el lugar combinando tipo de PH y nombre.
+    """
     ph_type = (ph_type or "—").strip()
     name = (ph_name or "").strip()
     return f"{ph_type}{(' - ' + name) if name else ''}"
@@ -198,6 +213,10 @@ def _parse_dt_flexible(raw: str) -> Optional[datetime]:
 def _fetch_due_maintenances(db_path: str, now_iso: str) -> List[DueMaintenance]:
     """
     Trae mantenimientos activos cuyo next_due_dt ya venció.
+
+    Importante:
+    - Se usan alias explícitos (AS ...) en expresiones COALESCE(...)
+      para que sqlite3.Row exponga las claves esperadas.
     """
     with readonly_session(db_path) as conn:
         rows = conn.execute(
@@ -207,11 +226,11 @@ def _fetch_due_maintenances(db_path: str, now_iso: str) -> List[DueMaintenance]:
                 chat_id,
                 client,
                 phone,
-                COALESCE(ph_type, ''),
+                COALESCE(ph_type, '') AS ph_type,
                 ph_name,
-                COALESCE(address_text, ''),
+                COALESCE(address_text, '') AS address_text,
                 waze_url,
-                COALESCE(appliances_json, '[]'),
+                COALESCE(appliances_json, '[]') AS appliances_json,
                 next_due_dt,
                 last_reminded_at
             FROM maintenance_plans
@@ -244,6 +263,11 @@ def _fetch_due_maintenances(db_path: str, now_iso: str) -> List[DueMaintenance]:
 def _fetch_due_work_jobs(db_path: str, now_iso: str) -> List[DueWorkJob]:
     """
     Trae trabajos próximos dentro de la ventana de recordatorio.
+
+    Regla:
+    - status = 'pending'
+    - start_dt debe estar entre now y now + WORK_REMIND_WINDOW_MINUTES
+    - además se descartan trabajos muy lejanos usando lookahead
     """
     now = datetime.fromisoformat(now_iso)
     window_end = now + timedelta(minutes=WORK_REMIND_WINDOW_MINUTES)
@@ -257,17 +281,17 @@ def _fetch_due_work_jobs(db_path: str, now_iso: str) -> List[DueWorkJob]:
                 chat_id,
                 client,
                 phone,
-                COALESCE(address_text, ''),
-                COALESCE(concept, ''),
-                COALESCE(start_dt, ''),
-                COALESCE(status, ''),
-                COALESCE(place_type, ''),
-                COALESCE(place_name, ''),
+                COALESCE(address_text, '') AS address_text,
+                COALESCE(concept, '') AS concept,
+                COALESCE(start_dt, '') AS start_dt,
+                COALESCE(status, '') AS status,
+                COALESCE(place_type, '') AS place_type,
+                COALESCE(place_name, '') AS place_name,
                 tower,
-                COALESCE(apartment, ''),
-                COALESCE(waze_query, ''),
-                COALESCE(appliance, ''),
-                COALESCE(kind, ''),
+                COALESCE(apartment, '') AS apartment,
+                COALESCE(waze_query, '') AS waze_query,
+                COALESCE(appliance, '') AS appliance,
+                COALESCE(kind, '') AS kind,
                 last_reminded_at
             FROM work_jobs
             WHERE status = 'pending'
@@ -319,7 +343,8 @@ def _fetch_due_work_jobs(db_path: str, now_iso: str) -> List[DueWorkJob]:
 # ---------------------------------------------------------------------
 def _delete_expired_work_jobs(conn, *, cutoff_iso: str) -> int:
     """
-    Borra trabajos cuya hora ya pasó y han transcurrido >= WORK_TTL_HOURS_AFTER_START.
+    Borra trabajos cuya hora ya pasó y han transcurrido
+    >= WORK_TTL_HOURS_AFTER_START.
     """
     cur = conn.execute(
         """
@@ -336,7 +361,9 @@ def _delete_expired_maintenances(conn, *, now_iso: str) -> int:
     Borra mantenimientos 12 horas después del último recordatorio.
     """
     now = datetime.fromisoformat(now_iso)
-    cutoff = (now - timedelta(hours=MAINT_TTL_HOURS_AFTER_REMINDER)).isoformat(timespec="seconds")
+    cutoff = (
+        now - timedelta(hours=MAINT_TTL_HOURS_AFTER_REMINDER)
+    ).isoformat(timespec="seconds")
 
     cur = conn.execute(
         """
@@ -355,12 +382,20 @@ def _delete_expired_maintenances(conn, *, now_iso: str) -> int:
 async def reminders_tick(context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     Tick del JobQueue. Recomendado: cada 60s.
+
+    Flujo:
+    1) Limpia registros expirados
+    2) Procesa pedidos
+    3) Procesa mantenimientos
+    4) Procesa trabajos próximos
     """
     tctx: TimeContext = context.bot_data["tctx"]
     db_path: str = context.bot_data["db_path"]
     lock = context.bot_data["db_write_lock"]
 
     now_iso = tctx.now_iso()
+
+    logger.debug("reminders_tick iniciado | now_iso=%s", now_iso)
 
     # =========================================================
     # 0) Limpiezas automáticas
@@ -370,8 +405,14 @@ async def reminders_tick(context: ContextTypes.DEFAULT_TYPE) -> None:
 
     async def _cleanup() -> None:
         with session(db_path, immediate=True) as conn:
-            _delete_expired_work_jobs(conn, cutoff_iso=cutoff_iso)
-            _delete_expired_maintenances(conn, now_iso=now_iso)
+            deleted_jobs = _delete_expired_work_jobs(conn, cutoff_iso=cutoff_iso)
+            deleted_maints = _delete_expired_maintenances(conn, now_iso=now_iso)
+
+            logger.debug(
+                "cleanup reminders | deleted_jobs=%s deleted_maintenances=%s",
+                deleted_jobs,
+                deleted_maints,
+            )
 
     await lock.run(_cleanup)
 
@@ -380,6 +421,8 @@ async def reminders_tick(context: ContextTypes.DEFAULT_TYPE) -> None:
     # =========================================================
     with readonly_session(db_path) as conn:
         due_orders = list_due_order_reminders(conn, now_iso)
+
+    logger.debug("due_orders encontrados=%s", len(due_orders))
 
     for order in due_orders:
         if _same_day(order.last_reminded_at, now_iso):
@@ -403,22 +446,53 @@ async def reminders_tick(context: ContextTypes.DEFAULT_TYPE) -> None:
                 parse_mode="Markdown",
                 disable_web_page_preview=False,
             )
-        except Exception:
+        except Exception as exc:
+            logger.exception(
+                "Error enviando recordatorio de pedido | order_id=%s chat_id=%s error=%s",
+                getattr(order, "id", "—"),
+                getattr(order, "chat_id", "—"),
+                exc,
+            )
             continue
-
-        next_iso = TimeContext.add_days_iso(now_iso, 2)
 
         async def _write_order() -> None:
             with session(db_path, immediate=True) as conn:
-                mark_order_reminded(conn, order.id, now_iso)
-                postpone_next_reminder(conn, order.id, next_iso, now_iso)
+                cur = conn.execute(
+                    "SELECT remind_count FROM ordered_parts WHERE id = ?",
+                    (order.id,),
+                ).fetchone()
 
+                current_count = int(cur[0] or 0)
+                new_count = current_count + 1
+
+                conn.execute(
+                    """
+                    UPDATE ordered_parts
+                    SET remind_count = ?,
+                        updated_at = ?
+                    WHERE id = ?
+                    """,
+                    (new_count, now_iso, int(order.id)),
+                )
+
+                mark_order_reminded(conn, order.id, now_iso)
+
+                if new_count < 2:
+                    next_iso = TimeContext.add_days_iso(now_iso, 2)
+                    postpone_next_reminder(conn, order.id, next_iso, now_iso)
+                else:
+                    logger.info(
+                        "Pedido %s alcanzó límite de recordatorios (%s). Detenido.",
+                        order.id,
+                        new_count,
+                    )
         await lock.run(_write_order)
 
     # =========================================================
     # 2) Mantenimientos
     # =========================================================
     due_maintenances = _fetch_due_maintenances(db_path, now_iso)
+    logger.debug("due_maintenances encontrados=%s", len(due_maintenances))
 
     for maint in due_maintenances:
         if _same_day(maint.last_reminded_at, now_iso):
@@ -449,7 +523,13 @@ async def reminders_tick(context: ContextTypes.DEFAULT_TYPE) -> None:
                 parse_mode="Markdown",
                 disable_web_page_preview=False,
             )
-        except Exception:
+        except Exception as exc:
+            logger.exception(
+                "Error enviando recordatorio de mantenimiento | maintenance_id=%s chat_id=%s error=%s",
+                getattr(maint, "id", "—"),
+                getattr(maint, "chat_id", "—"),
+                exc,
+            )
             continue
 
         async def _write_maint() -> None:
@@ -462,6 +542,7 @@ async def reminders_tick(context: ContextTypes.DEFAULT_TYPE) -> None:
     # 3) Trabajos agendados próximos
     # =========================================================
     due_jobs = _fetch_due_work_jobs(db_path, now_iso)
+    logger.debug("due_jobs encontrados=%s", len(due_jobs))
 
     for job in due_jobs:
         if _same_day(job.last_reminded_at, now_iso):
@@ -499,7 +580,13 @@ async def reminders_tick(context: ContextTypes.DEFAULT_TYPE) -> None:
                 parse_mode="Markdown",
                 disable_web_page_preview=False,
             )
-        except Exception:
+        except Exception as exc:
+            logger.exception(
+                "Error enviando recordatorio de trabajo | job_id=%s chat_id=%s error=%s",
+                getattr(job, "id", "—"),
+                getattr(job, "chat_id", "—"),
+                exc,
+            )
             continue
 
         async def _write_job() -> None:

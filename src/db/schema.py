@@ -144,6 +144,8 @@ CREATE TABLE IF NOT EXISTS ordered_parts (
     ordered_at TEXT NOT NULL,
     first_remind_dt TEXT NOT NULL,
     next_remind_dt TEXT NOT NULL,
+    remind_count INTEGER NOT NULL DEFAULT 0
+        CHECK(remind_count >= 0),
     arrived INTEGER NOT NULL DEFAULT 0
         CHECK(arrived IN (0, 1)),
     installed INTEGER NOT NULL DEFAULT 0

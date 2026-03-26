@@ -38,6 +38,7 @@ class OrderedPart:
     ordered_at: str
     first_remind_dt: str
     next_remind_dt: str
+    remind_count: int  # 👈 NUEVO
     arrived: int
     installed: int
     legend: Optional[str]
@@ -124,6 +125,11 @@ def list_due_order_reminders(
 ) -> List[OrderedPart]:
     """
     Lista pedidos no instalados cuyo próximo recordatorio ya llegó o venció.
+
+    Reglas:
+    - installed = 0 → solo pedidos activos
+    - remind_count < 2 → máximo 2 recordatorios
+    - next_remind_dt <= now → ya es momento de avisar
     """
     rows = conn.execute(
         """
@@ -137,6 +143,7 @@ def list_due_order_reminders(
             ordered_at,
             first_remind_dt,
             next_remind_dt,
+            remind_count,
             arrived,
             installed,
             legend,
@@ -148,6 +155,7 @@ def list_due_order_reminders(
             updated_at
         FROM ordered_parts
         WHERE installed = 0
+          AND remind_count < 2
           AND next_remind_dt <= ?
         ORDER BY next_remind_dt ASC
         """,
@@ -165,6 +173,7 @@ def list_due_order_reminders(
             ordered_at=str(r["ordered_at"]),
             first_remind_dt=str(r["first_remind_dt"]),
             next_remind_dt=str(r["next_remind_dt"]),
+            remind_count=int(r["remind_count"] or 0),
             arrived=int(r["arrived"]),
             installed=int(r["installed"]),
             legend=r["legend"],

@@ -305,6 +305,26 @@ def _migration_004_split_invoice_items(conn: sqlite3.Connection) -> None:
 
     _mark_migration_applied(conn, version)
 
+def _migration_005_ordered_parts_remind_count(conn: sqlite3.Connection) -> None:
+    """
+    Agrega columna remind_count para controlar cantidad de recordatorios enviados.
+
+    Lógica:
+    - 0 → no se ha enviado ninguno
+    - 1 → primer recordatorio enviado
+    - 2 → segundo recordatorio enviado (stop)
+    """
+    version = "005_ordered_parts_remind_count"
+    if _migration_applied(conn, version):
+        return
+
+    _add_column_if_missing(
+        conn,
+        "ordered_parts",
+        "remind_count INTEGER NOT NULL DEFAULT 0",
+    )
+
+    _mark_migration_applied(conn, version)
 
 def _ensure_indexes(conn: sqlite3.Connection) -> None:
     conn.execute(
@@ -407,6 +427,7 @@ def apply_schema(conn: sqlite3.Connection) -> None:
     _migration_002_coordinator_extra_columns(conn)
     _migration_003_invoice_and_service_updates(conn)
     _migration_004_split_invoice_items(conn)
+    _migration_005_ordered_parts_remind_count(conn)
 
     _ensure_indexes(conn)
     conn.commit()
